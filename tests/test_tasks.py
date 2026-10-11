@@ -76,7 +76,7 @@ class IngestPathTest(TestCase):
         # validation happens before anything is stored
         self.assertEqual(list(self.dataset.iterate()), [])
 
-    def test_ingest_path_incremental(self):
+    def test_ingest_path_resume(self):
         """Files the documents crawl export lists are neither stored nor queued
         again. They are matched by their path below the crawl root, so a file
         of the same name in another folder is still new."""
@@ -84,7 +84,7 @@ class IngestPathTest(TestCase):
         root.joinpath("top.txt").write_text("top")
         if not Settings().lakehouse:
             with self.assertRaises(ValueError):
-                ingest_path(TEST_DATASET, root, incremental=True)
+                ingest_path(TEST_DATASET, root, resume=True)
             self.assertEqual(list(self.dataset.iterate()), [])
             return
 
@@ -108,9 +108,9 @@ class IngestPathTest(TestCase):
                 Manager, "queue_entity", autospec=True, side_effect=Manager.queue_entity
             ) as queue,
         ):
-            ingest_path(TEST_DATASET, root, incremental=True)
+            ingest_path(TEST_DATASET, root, resume=True)
             # a single file is looked up against its parent directory
-            ingest_path(TEST_DATASET, root.joinpath("top.txt"), incremental=True)
+            ingest_path(TEST_DATASET, root.joinpath("top.txt"), resume=True)
 
         # the crawled files are still in the dataset, but not crawled again:
         # neither queued for ingest nor stored, only the new files are

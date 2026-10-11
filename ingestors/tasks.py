@@ -124,21 +124,21 @@ def ingest_path(
     path: Path,
     languages: list[str] | None = None,
     foreign_id: str | None = None,
-    incremental: bool = False,
+    resume: bool = False,
 ):
     if foreign_id:
         foreign_id = dataset_name_check(foreign_id)
-    if incremental and not settings.lakehouse:
-        raise ValueError("Incremental ingest requires `OPENALEPH_LAKEHOUSE=1`")
+    if resume and not settings.lakehouse:
+        raise ValueError("Resuming an ingest requires `OPENALEPH_LAKEHOUSE=1`")
     context = {"languages": languages or [], "namespace": foreign_id or dataset}
     manager = CrawlManager(sync_app, dataset, context)
     path = ensure_path(path)
     log = get_logger(__name__, dataset=dataset, context=context, path=path)
     if path is not None:
         crawled: set[str] = set()
-        if incremental:
+        if resume:
             crawled = get_crawled(dataset, path if path.is_dir() else path.parent)
-            log.info(f"Incremental: {len(crawled)} files already crawled.")
+            log.info(f"Resume: {len(crawled)} files already crawled.")
         if path.is_file() and path.as_posix() in crawled:
             log.info(f"Skip already crawled: `{path.name}`")
         elif path.is_file():
