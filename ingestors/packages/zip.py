@@ -4,6 +4,7 @@ import zipfile
 from ingestors.exc import ProcessingException
 from ingestors.ingestor import Ingestor
 from ingestors.support.package import PackageSupport
+from ingestors.util import contain_errors
 
 log = logging.getLogger(__name__)
 
@@ -26,15 +27,13 @@ class ZipIngestor(PackageSupport, Ingestor):
                 encoding = self.detect_list_encoding(names)
                 log.debug("Detected filename encoding: %s", encoding)
                 for name in names:
-                    try:
+                    with contain_errors(name):
                         info = zf.getinfo(name)
                         if info.is_dir():
                             continue
 
                         with zf.open(name) as fh:
                             self.extract_member(temp_dir, name, fh, encoding=encoding)
-                    except Exception as ex:
-                        log.error("Failed to unpack [%r]: %s", name, ex)
         except (zipfile.BadZipfile, UnicodeDecodeError, OSError) as bzfe:
             raise ProcessingException("Invalid ZIP file: %s" % bzfe) from bzfe
 

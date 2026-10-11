@@ -2,6 +2,7 @@ import os
 import shutil
 from unittest import mock
 
+from openaleph_procrastinate import defer
 from servicelayer.archive.util import ensure_path
 
 from ingestors.directory import DirectoryIngestor
@@ -9,6 +10,7 @@ from ingestors.email.olm import MIME as OPF_MESSAGE_MIME
 from ingestors.email.olm import OutlookOLMMessageIngestor
 from ingestors.manager import Manager
 from ingestors.media.tiff import TIFFIngestor
+from ingestors.misc.tika import TikaIngestor
 from ingestors.settings import Settings
 from ingestors.tasks import app
 from tests.support import TEST_DATASET, TestCase
@@ -111,3 +113,63 @@ class AuctionTest(TestCase):
         entity.make_id("testdir")
         entity.add("mimeType", DirectoryIngestor.MIME_TYPE)
         self.assertEqual(self.manager.auction(path, entity), DirectoryIngestor)
+
+
+class QueueEntityTest(TestCase):
+    """An entity id already waiting for ingestion is not queued again."""
+
+    def queued(self) -> list[dict]:
+        return [
+            job
+            for job in app.connector.jobs.values()
+            if job["queue_name"] == defer.tasks.ingest.queue
+        ]
+
+    def occurrence(self, folder_name: str):
+        """The same file (name and content hash) below another folder."""
+        folder = self.manager.make_entity("Folder")
+        folder.make_id(folder_name)
+        child = self.manager.make_entity("Document", parent=folder)
+        child.make_id("dup.txt", "dupchecksum")
+        child.add("contentHash", "dupchecksum")
+        child.add("fileName", "dup.txt")
+        return child
+
+    def test_duplicate_occurrence_queued_once(self):
+        first, second = self.occurrence("a"), self.occurrence("b")
+        self.assertEqual(first.id, second.id)
+        self.manager.queue_entity(first)
+        self.manager.queue_entity(second)
+        self.assertEqual(len(self.queued()), 1)
+
+    def test_collapsed_occurrence_keeps_its_placement(self):
+        """The dropped job was the only place its `parent` existed."""
+        first, second = self.occurrence("a"), self.occurrence("b")
+        self.manager.queue_entity(first)
+        self.manager.queue_entity(second)
+        self.manager.writer.flush()
+        emitted = self.dataset.get(second.id)
+        self.assertEqual(emitted.get("parent"), second.get("parent"))
+
+
+class IngestEmbeddedTest(TestCase):
+    """`TikaSupport.ingest_embedded` caches what it extracted by the parent's
+    content hash."""
+
+    def test_replay_is_served_from_the_cache(self):
+        path, entity = self.fixture("translate.po")
+        parsed = {"attachments": {"embedded.txt": b"hello"}}
+        with mock.patch(
+            "ingestors.support.tika.unpack.from_file", return_value=parsed
+        ) as unpack:
+            TikaIngestor(self.manager).ingest_embedded(path, parent=entity)
+            TikaIngestor(self.manager).ingest_embedded(path, parent=entity)
+            self.assertEqual(unpack.call_count, 1)
+        queued = [
+            queued_entity["id"]
+            for job in app.connector.jobs.values()
+            if job["queue_name"] == defer.tasks.ingest.queue
+            for queued_entity in job["args"]["payload"]["entities"]
+        ]
+        self.assertEqual(len(queued), 1)
+        self.assertEqual(len(self.manager.entities), 1)  # the collapsed placement

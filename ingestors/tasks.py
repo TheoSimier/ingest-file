@@ -12,6 +12,7 @@ from openaleph_procrastinate.app import App, make_app
 from openaleph_procrastinate.model import DatasetJob
 from openaleph_procrastinate.settings import OpenAlephSettings
 from openaleph_procrastinate.tasks import task
+from procrastinate import RetryStrategy
 from prometheus_client import Info
 from servicelayer.archive.util import ensure_path
 
@@ -31,10 +32,29 @@ app = make_app(__loader__.name)
 sync_app = make_app(__loader__.name, sync=True)
 settings = OpenAlephSettings()
 
+# Exponential backoff between ingest attempts: `RETRY_WAIT ** (attempts + 1)`
+# seconds, so 3, 9, 27, 81, 243.
+RETRY_WAIT = 3
+
 # container schemata that carry no text of their own. Compared by exact name:
 # `is_a` would also match everything extending them, and `Email` extends
 # `Folder` (it holds its attachments), which would exclude mailbox NER.
 SKIP_ANALYSIS = ("Workbook", "Package", "Folder")
+
+
+def get_retry() -> RetryStrategy | bool:
+    """Retry a failed ingest job with a backoff: the configured number of
+    attempts alone retries immediately, repeating a conversion and the
+    ingestor's fan-out back to back."""
+    retries = defer.tasks.ingest.retries
+    if not retries:  # `OPENALEPH_INGEST_MAX_RETRIES=0`
+        return False
+    return RetryStrategy(
+        # `True` is unlimited, which `RetryStrategy` spells `None`; as an int
+        # it would mean "no attempt at all"
+        max_attempts=None if retries is True else retries,
+        exponential_wait=RETRY_WAIT,
+    )
 
 
 def should_analyze(e: EntityProxy) -> bool:
@@ -46,7 +66,7 @@ def should_analyze(e: EntityProxy) -> bool:
     return False
 
 
-@task(app=app, retry=defer.tasks.ingest.retries, tracer_uri=settings.redis_url)
+@task(app=app, retry=get_retry(), tracer_uri=settings.redis_url)
 def ingest(job: DatasetJob) -> None:
     to_analyze: list[EntityProxy] = []
     to_index: list[EntityProxy] = []

@@ -16,6 +16,7 @@ from ingestors.exc import ProcessingException
 from ingestors.ingestor import Ingestor
 from ingestors.support.email import EmailSupport
 from ingestors.support.encoding import EncodingSupport
+from ingestors.util import contain_errors
 
 log = logging.getLogger(__name__)
 
@@ -129,8 +130,9 @@ class RFC822Ingestor(Ingestor, EmailSupport, EncodingSupport):
         log.error("Dangling MIME fragment: %s", part)
 
     def parse_parts(self, entity, parent):
-        for part in parent.get_payload():
-            self.parse_part(entity, part, parent)
+        for index, part in enumerate(parent.get_payload()):
+            with contain_errors(f"part {index} of {entity.id}"):
+                self.parse_part(entity, part, parent)
 
     def ingest_msg(self, entity, msg):
         self.extract_msg_headers(entity, msg)
@@ -192,7 +194,9 @@ class RFC822Ingestor(Ingestor, EmailSupport, EncodingSupport):
 
                 temp_dir_path = Path(temp_dir)
                 for attachment_path in temp_dir_path.iterdir():
-                    if not attachment_path.name.startswith(ignore_prefix):
+                    if attachment_path.name.startswith(ignore_prefix):
+                        continue
+                    with contain_errors(attachment_path.name):
                         # same digest `ingest_attachment` records, so an
                         # attachment the mime walk already handled is not
                         # ingested a second time

@@ -13,6 +13,7 @@ from ingestors.support.email import EmailIdentity, EmailSupport
 from ingestors.support.temp import TempFileSupport
 from ingestors.support.timestamp import TimestampSupport
 from ingestors.support.xml import XMLSupport
+from ingestors.util import contain_errors
 
 # from pprint import pprint
 
@@ -91,8 +92,9 @@ class OutlookOLMArchiveIngestor(Ingestor, TempFileSupport, XMLSupport):
             doc = self.parse_xml_path(xml_path)
             # find all attachments mentioned in the current xml file, assign
             # them their parent and put them on the queue to be processed
-            for el in doc.findall(".//messageAttachment"):
-                self.extract_attachment(zipf, child, el)
+            for index, el in enumerate(doc.findall(".//messageAttachment")):
+                with contain_errors(f"attachment {index} of {child.id}"):
+                    self.extract_attachment(zipf, child, el)
         except ProcessingException:
             pass
 
@@ -103,10 +105,8 @@ class OutlookOLMArchiveIngestor(Ingestor, TempFileSupport, XMLSupport):
             # OLM files are zip archives with emails stored as xml files
             with zipfile.ZipFile(file_path, "r") as zipf:
                 for name in zipf.namelist():
-                    try:
+                    with contain_errors(name):
                         self.extract_message(entity, zipf, name)
-                    except Exception:
-                        log.exception("Error processing message: %s", name)
         except zipfile.BadZipfile:
             raise ProcessingException("Invalid OLM file.")
 

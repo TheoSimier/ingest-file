@@ -9,6 +9,7 @@ from ftm_lakehouse.core.conventions import tag
 
 from ingestors.ingestor import Ingestor
 from ingestors.settings import OP_INGEST
+from ingestors.util import contain_errors
 
 
 class DirectoryIngestor(Ingestor):
@@ -96,15 +97,17 @@ class DirectoryIngestor(Ingestor):
         files = cls.walk(manager, file_path, parent, origin, skip)
         if threads < 2:
             for child, path in files:
-                checksum = manager.store(path, origin=origin)
-                cls.queue(manager, child, path, checksum, origin)
+                with contain_errors(path):
+                    checksum = manager.store(path, origin=origin)
+                    cls.queue(manager, child, path, checksum, origin)
             return
         pending: deque[tuple[EntityProxy, Path, Future[str]]] = deque()
 
         def drain(keep: int) -> None:
             while len(pending) > keep:
                 child, path, future = pending.popleft()
-                cls.queue(manager, child, path, future.result(), origin)
+                with contain_errors(path):
+                    cls.queue(manager, child, path, future.result(), origin)
 
         with ThreadPoolExecutor(threads) as pool:
             for child, path in files:

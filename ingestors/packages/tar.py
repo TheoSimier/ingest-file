@@ -1,9 +1,10 @@
 import logging
 import tarfile
 
+from ingestors.exc import ProcessingException
 from ingestors.ingestor import Ingestor
 from ingestors.support.package import PackageSupport
-from ingestors.exc import ProcessingException
+from ingestors.util import contain_errors
 
 log = logging.getLogger(__name__)
 
@@ -26,12 +27,9 @@ class TarIngestor(PackageSupport, Ingestor):
                 log.debug("Detected filename encoding: %s", encoding)
 
                 for name in names:
-                    try:
+                    with contain_errors(name):
                         fh = tf.extractfile(name)
                         self.extract_member(temp_dir, name, fh, encoding=encoding)
-                    except Exception:
-                        # TODO: should this be a fatal error?
-                        log.exception("Failed to unpack: %r", name)
         except (tarfile.TarError, IOError, EOFError) as err:
             raise ProcessingException("Invalid Tar file: %s" % err) from err
 

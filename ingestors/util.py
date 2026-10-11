@@ -1,9 +1,12 @@
 import locale
+import logging
 import shutil
 from contextlib import contextmanager
 from pathlib import Path
 
 from normality import stringify
+
+log = logging.getLogger(__name__)
 
 
 class SingletonDecorator:
@@ -15,6 +18,16 @@ class SingletonDecorator:
         if self.instance is None:
             self.instance = self.klass(*args, **kwds)
         return self.instance
+
+
+@contextmanager
+def contain_errors(label):
+    """Contain the failure of one child in a fan-out loop: an exception leaving
+    it fails the task, which replays the ingestor and re-queues its children."""
+    try:
+        yield
+    except Exception:
+        log.exception("Cannot ingest child: %s", label)
 
 
 def remove_directory(file_path):

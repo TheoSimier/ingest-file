@@ -1,15 +1,17 @@
 import logging
-from msglite import Message
-from olefile import isOleFile
-from normality import stringify
-from followthemoney import model
 from email.utils import parsedate_to_datetime
 
-from ingestors.ingestor import Ingestor
-from ingestors.support.email import EmailSupport, EmailIdentity
-from ingestors.support.temp import TempFileSupport
-from ingestors.support.ole import OLESupport
+from followthemoney import model
+from msglite import Message
+from normality import stringify
+from olefile import isOleFile
+
 from ingestors.exc import ProcessingException
+from ingestors.ingestor import Ingestor
+from ingestors.support.email import EmailIdentity, EmailSupport
+from ingestors.support.ole import OLESupport
+from ingestors.support.temp import TempFileSupport
+from ingestors.util import contain_errors
 
 log = logging.getLogger(__name__)
 RTF_MIME = "application/rtf"
@@ -91,8 +93,8 @@ class OutlookMsgIngestor(Ingestor, EmailSupport, OLESupport, TempFileSupport):
         )
         self.apply_identities(entity, sender, "emitters")
 
-        froms = self.get_identities(msg.getStringField("1046"))
-        self.apply_identities(entity, froms, "emitters", "from")
+        froms = self.get_identities(msg.getStringField("1046"))  # codespell:ignore
+        self.apply_identities(entity, froms, "emitters", "from")  # codespell:ignore
 
         tos = self.get_identities(msg.to)
         self.apply_identities(entity, tos, "recipients", "to")
@@ -104,21 +106,22 @@ class OutlookMsgIngestor(Ingestor, EmailSupport, OLESupport, TempFileSupport):
         self.apply_identities(entity, bccs, "recipients", "bcc")
 
         self.resolve_message_ids(entity)
-        for attachment in msg.attachments:
-            if attachment.type == "msg":
-                child = self.manager.make_entity("Email", parent=entity)
-                child.make_id(entity.id, attachment.data.prefix)
-                child.add("fileName", attachment.long_filename)
-                child.add("fileName", attachment.short_filename)
-                child.add("mimeType", "application/vnd.ms-outlook")
-                self.ingest_message(attachment.data, child)
-                self.manager.emit_entity(child, fragment=attachment.data.prefix)
-            if attachment.type == "data":
-                name = stringify(attachment.long_filename)
-                name = name or stringify(attachment.short_filename)
-                self.ingest_attachment(
-                    entity, name, attachment.content_type, attachment.data
-                )
+        for index, attachment in enumerate(msg.attachments):
+            with contain_errors(f"attachment {index} of {entity.id}"):
+                if attachment.type == "msg":
+                    child = self.manager.make_entity("Email", parent=entity)
+                    child.make_id(entity.id, attachment.data.prefix)
+                    child.add("fileName", attachment.long_filename)
+                    child.add("fileName", attachment.short_filename)
+                    child.add("mimeType", "application/vnd.ms-outlook")
+                    self.ingest_message(attachment.data, child)
+                    self.manager.emit_entity(child, fragment=attachment.data.prefix)
+                if attachment.type == "data":
+                    name = stringify(attachment.long_filename)
+                    name = name or stringify(attachment.short_filename)
+                    self.ingest_attachment(
+                        entity, name, attachment.content_type, attachment.data
+                    )
 
     @classmethod
     def match(cls, file_path, entity):

@@ -1,9 +1,11 @@
 import logging
+
 import rarfile
 
+from ingestors.exc import ProcessingException
 from ingestors.ingestor import Ingestor
 from ingestors.support.package import PackageSupport
-from ingestors.exc import ProcessingException
+from ingestors.util import contain_errors
 
 log = logging.getLogger(__name__)
 
@@ -22,12 +24,9 @@ class RARIngestor(PackageSupport, Ingestor):
                 log.debug("Detected filename encoding: %s", encoding)
 
                 for name in names:
-                    try:
+                    with contain_errors(name):
                         fh = rf.open(name)
                         self.extract_member(temp_dir, name, fh, encoding=encoding)
-                    except Exception as exc:
-                        # TODO: should this be a fatal error?
-                        log.warning("Failed to unpack [%s]: %s", name, exc)
         except rarfile.NeedFirstVolume as nfv:
             raise ProcessingException("Cannot load RAR partials") from nfv
         except rarfile.PasswordRequired as pr:

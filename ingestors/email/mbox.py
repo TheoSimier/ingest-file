@@ -8,6 +8,7 @@ from rigour.mime.types import RFC822
 
 from ingestors.email.msg import RFC822Ingestor
 from ingestors.support.temp import TempFileSupport
+from ingestors.util import contain_errors
 
 log = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class MboxFileIngestor(RFC822Ingestor, TempFileSupport):
 
         for i, msg in enumerate(mbox.itervalues(), 1):
             # Is there a risk of https://bugs.python.org/issue27321 ?
-            try:
+            with contain_errors(f"message {i} of {entity.id}"):
                 msg_path = self.make_work_file("%s.eml" % i)
                 with open(msg_path, "wb") as fh:
                     gen = BytesGenerator(fh, policy=default)
@@ -38,8 +39,6 @@ class MboxFileIngestor(RFC822Ingestor, TempFileSupport):
                 child.add("contentHash", checksum)
                 child.add("mimeType", RFC822)
                 self.manager.queue_entity(child)
-            except Exception:
-                log.exception("[%r] Cannot extract message %s", entity, i)
 
     @classmethod
     def match(cls, file_path, entity):

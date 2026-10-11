@@ -215,9 +215,17 @@ class Manager:
                 raise ProcessingException("Format not supported")
         return best_cls
 
-    def queue_entity(self, entity):
+    def queue_entity(self, entity: EntityProxy) -> None:
+        """Defer an ingest job for `entity`. `defer.ingest` collapses it with an
+        identical job that is still waiting, and the placement of this
+        occurrence then has to be emitted here: the dropped payload held its
+        only `parent`/`ancestors`."""
         with self.app.open():
-            defer.ingest(self.app, self.dataset, [entity], **self.context)
+            # a release without deduplication returns `None`, which leaves the
+            # placement to the job it did defer
+            if defer.ingest(self.app, self.dataset, [entity], **self.context) is False:
+                log.info("Not queued, emitting placement only: %r", entity)
+                self.emit_entity(entity)
 
     def store(
         self, file_path: Path, mime_type: str | None = None, origin: str = OP_INGEST

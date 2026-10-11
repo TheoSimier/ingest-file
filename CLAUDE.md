@@ -9,6 +9,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 3. Touch only what you must. Clean up only your own mess.
 4. Define success criteria. Loop until verified.
 
+## Conventions
+
+- Keep docstrings and docs short, only the essentials; the audience is developers. No reasoning essays. Inline comments only where the code would surprise otherwise. Docstrings carry Args / Returns only for public API documented in `docs/` (rendered via mkdocstrings, see `docs/reference/`); keep their `Example(s):` sections.
+- No section banners (`# --- ... ---`, `// --- ... ---`) in code or tests: a comment explains surprising code, it doesn't divide a file.
+- Never use em-dashes (`—`) in prose (docstrings, comments, docs, commit messages, PR text). Use a normal hyphen (`-`) or restructure the sentence.
+- In `docs/` markdown prose, keep each paragraph on a single line (do not hard-wrap; one line per paragraph, separated by blank lines). Code docstrings and comments wrap normally.
+
 ## Environment
 
 Always use the virtualenv at `.venv` when running commands (e.g. `.venv/bin/python`, `.venv/bin/pytest`).

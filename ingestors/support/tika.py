@@ -12,6 +12,7 @@ from tika import parser, unpack
 from ingestors.exc import ProcessingException
 from ingestors.support.cache import CacheSupport
 from ingestors.support.temp import TempFileSupport
+from ingestors.util import contain_errors
 
 log = logging.getLogger(__name__)
 
@@ -71,33 +72,65 @@ class TikaSupport(CacheSupport, TempFileSupport):
                 self.tags.set(_cache_key, result)
             return result
 
+    def queue_embedded(
+        self, parent: EntityProxy | None, name: str, checksum: str
+    ) -> None:
+        """Queue one extracted file, fresh or from the cache."""
+        child = self.manager.make_entity("Document", parent=parent)
+        child.make_id(name, checksum)
+        child.add("contentHash", checksum)
+        child.add("fileName", name)
+        log.info(f"Queuing {name} with content hash {checksum} and parent {parent.id}")
+        self.manager.queue_entity(child)
+
     def ingest_embedded(
         self, parent_file: PosixPath, parent: EntityProxy | None = None
     ):
-        parsed = unpack.from_file(parent_file.open("rb"))
+        """Queue the files embedded in a document, each for an ingestion of its
+        own. The outcome is cached by the parent's content hash, so a replay
+        does not pay for another unpack."""
+        content_hash = parent.first("contentHash") if parent is not None else None
+        cache_key = (
+            self.cache_key("tika-embedded", content_hash) if content_hash else None
+        )
+        cached = self.tags.get(cache_key) if cache_key else None
+        if cached is not None:
+            log.info("Tika: %s cached embedded files for %s", len(cached), content_hash)
+            for name, checksum in cached:
+                with contain_errors(name):
+                    self.queue_embedded(parent, name, checksum)
+            return
+        try:
+            parsed = unpack.from_file(parent_file.open("rb"))
+        except Exception as exc:
+            # tika-python untars the response under a 60s http timeout of its
+            # own; failing the task replays the whole ingestor, pdf conversion
+            # included.
+            raise ProcessingException(f"Cannot extract embedded files: {exc}") from exc
         attachments = parsed.get("attachments") or {}
         log.info(f"Tika extracted {len(attachments.items())} attachments.")
+        embedded: list[list[str]] = []
+        expected = 0
         for name, data in attachments.items():
             log.debug(f"Analyzing attachment: {name}")
             if not data:
                 log.error(f"Attachment {name} has no data")
                 continue
-            unwrapped = _unwrap_ole_package(data)
-            if unwrapped is not None:
-                name, data = unwrapped
-                log.debug("Unwrapped OLE Package: %s", name)
-            file_name = safe_filename(name, default="embedded")
-            file_path = self.make_work_file(file_name)
-            with open(file_path, "wb") as fh:
-                fh.write(data)
-            # do not assign mime_type, hope the ingestor deduces it correctly
-            checksum = self.manager.store(file_path)
-            file_path.unlink()
-            child = self.manager.make_entity("Document", parent=parent)
-            child.make_id(name, checksum)
-            child.add("contentHash", checksum)
-            child.add("fileName", name)
-            log.info(
-                f"Queuing {name} with content hash {checksum} and parent {parent.id}"
-            )
-            self.manager.queue_entity(child)
+            expected += 1
+            with contain_errors(name):
+                unwrapped = _unwrap_ole_package(data)
+                if unwrapped is not None:
+                    name, data = unwrapped
+                    log.debug("Unwrapped OLE Package: %s", name)
+                file_name = safe_filename(name, default="embedded")
+                file_path = self.make_work_file(file_name)
+                with open(file_path, "wb") as fh:
+                    fh.write(data)
+                # do not assign mime_type, hope the ingestor deduces it correctly
+                checksum = self.manager.store(file_path)
+                file_path.unlink()
+                self.queue_embedded(parent, name, checksum)
+                embedded.append([name, checksum])
+        if cache_key and len(embedded) == expected:
+            # only a complete extraction, or a contained error is cached too
+            self.tags.set(cache_key, embedded)
