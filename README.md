@@ -13,9 +13,17 @@
 
 https://openaleph.org/docs/lib/ingest-file
 
+To build the documentation locally:
+
+```bash
+# On macOS, install libmagic first: brew install libmagic
+poetry install --with docs
+poetry run mkdocs build
+```
+
 ## Development environment
 
-For local development use [poetry](https://python-poetry.org/)
+For local development use [poetry](https://python-poetry.org/) version 2.0 or later.
 
 ```bash
 poetry install --with dev --all-extras
@@ -24,7 +32,7 @@ poetry install --with dev --all-extras
 ### pre-commit
 
 ```bash
-pre-commit install
+poetry run pre-commit install
 ```
 
 ## Release procedure
