@@ -322,7 +322,7 @@ version = "4.15.1"
 description = "High-level concurrency and networking framework on top of asyncio or Trio"
 optional = false
 python-versions = ">=3.10"
-groups = ["main"]
+groups = ["main", "docs"]
 files = [
     {file = "anyio-4.15.1-py3-none-any.whl", hash = "sha256:6152fdbbf9a77fdec97731721bebf7c4c44f7c29b424b0065826173efc7ed101"},
     {file = "anyio-4.15.1.tar.gz", hash = "sha256:9f28306018cbd6d329e64a36d58256edff76dd996fe423bc957326e578b82a94"},
@@ -2287,7 +2287,7 @@ version = "2.8.4"
 description = "A Rust HTTP server for Python applications"
 optional = false
 python-versions = ">=3.10"
-groups = ["main"]
+groups = ["main", "docs"]
 files = [
     {file = "granian-2.8.4-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:06b996f89522104425250d6462f087e916cf4be39dbf2b603df9d9dda7e37a2f"},
     {file = "granian-2.8.4-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:9394a310ae6edb4cc22f7e764f36e40f7c97777a96b76729b6875acbf1838ae3"},
@@ -5236,24 +5236,24 @@ test = ["anyio (>=4.0)", "mypy (>=2.1.0)", "pproxy (>=2.7)", "pytest (>=6.2.5)",
 
 [[package]]
 name = "putfs"
-version = "0.6.0"
+version = "0.6.2"
 description = "Efficient HTTP blob storage over local filesystem"
 optional = false
 python-versions = "<3.15,>=3.11"
-groups = ["main"]
+groups = ["main", "docs"]
 files = [
-    {file = "putfs-0.6.0-py3-none-any.whl", hash = "sha256:38bf010ed1cfc407c64586535e9bbaf9fcdf3e5cccd7d6bbc42c97c59a5296dd"},
-    {file = "putfs-0.6.0.tar.gz", hash = "sha256:536af0e94863725aeb1182a892ce4364f9744278c1e889e3f33958e6663a9fb0"},
+    {file = "putfs-0.6.2-py3-none-any.whl", hash = "sha256:fc3d3faa16f0a6bf8b1e6a603101b8aabcf565afedd105275eea9bbcc861df46"},
+    {file = "putfs-0.6.2.tar.gz", hash = "sha256:fc9ae63d4da91d212a06cb33e6dcc82674eb6af3f4e5683a3ff8dae53895d331"},
 ]
 
 [package.dependencies]
 anyio = ">=4.15.1,<5.0.0"
 granian = ">=2.8.4,<3.0.0"
-starlette = ">=1.7.0,<2.0.0"
+starlette = ">=1.9.0,<2.0.0"
 uvloop = ">=0.22.1,<0.23.0"
 
 [package.extras]
-client = ["anystore[http] (>=1.5.1,<2.0.0)", "tqdm (>=4.70.0,<5.0.0)"]
+client = ["anystore[http] (>=1.5.4,<2.0.0)", "tqdm (>=4.70.0,<5.0.0)"]
 
 [[package]]
 name = "py7zr"
@@ -6983,14 +6983,14 @@ sqlcipher = ["sqlcipher3_binary"]
 
 [[package]]
 name = "starlette"
-version = "1.7.0"
+version = "1.10.0"
 description = "The little ASGI library that shines."
 optional = false
-python-versions = ">=3.10"
-groups = ["main"]
+python-versions = ">=3.11"
+groups = ["main", "docs"]
 files = [
-    {file = "starlette-1.7.0-py3-none-any.whl", hash = "sha256:67f8e99895493dd2911a03f11314af6ceebeae4e704bb9f43dfc6a9db151c93e"},
-    {file = "starlette-1.7.0.tar.gz", hash = "sha256:c79f74ea63cff761804fbbfb182f1e0b440c2d07b164d24700c5a1bab5d6ff5d"},
+    {file = "starlette-1.10.0-py3-none-any.whl", hash = "sha256:478c0ab3b4ced6e82719849c118fa406f0278a3499c1a898cd15cd31bdc38ce4"},
+    {file = "starlette-1.10.0.tar.gz", hash = "sha256:b8399098d4c1e3522734f7235dc79b1fc967f96cf139c81e0fa30479e0685f9b"},
 ]
 
 [package.dependencies]
@@ -7308,7 +7308,7 @@ version = "0.22.1"
 description = "Fast implementation of asyncio event loop on top of libuv"
 optional = false
 python-versions = ">=3.8.1"
-groups = ["main"]
+groups = ["main", "docs"]
 files = [
     {file = "uvloop-0.22.1-cp310-cp310-macosx_10_9_universal2.whl", hash = "sha256:ef6f0d4cc8a9fa1f6a910230cd53545d9a14479311e87e3cb225495952eb672c"},
     {file = "uvloop-0.22.1-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:7cd375a12b71d33d46af85a3343b35d98e8116134ba404bd657b3b1d15988792"},
@@ -7767,4 +7767,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "a7f9ecfa8e8d14c952fa5edac6009a138a4b3ac36bbccae9e2389ff8a4a73f44"
+content-hash = "37be2f917c08475c0c6e3d0c404accfbfeb4939bfe475a81b42c20052986ccd4"
