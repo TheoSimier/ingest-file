@@ -16,7 +16,6 @@ https://openaleph.org/docs/lib/ingest-file
 To build the documentation locally:
 
 ```bash
-# On macOS, install libmagic first: brew install libmagic
 poetry install --with docs
 poetry run mkdocs build
 ```
