@@ -11,11 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Environment
 
-Use `poetry run <command>` for Python commands run on the host. Install the needed
-groups with Poetry: `poetry install --with dev --all-extras` for development,
-`poetry install --with docs` for documentation, or
-`poetry install --with dev,docs --all-extras` for both. Commands inside Docker
-use the container's environment.
+Use `poetry run <command>` for Python commands run on the host.
 
 ## Project Overview
 
